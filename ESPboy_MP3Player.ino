@@ -40,7 +40,7 @@
 //diff vars button
 static uint_fast16_t  buttonspressed;
 static uint_fast16_t count;
-static uint16_t mp3vol, mp3state, mp3eq, mp3fileCounts, mp3currentFileNumber, mp3onplay = 0, mp3random = 0, mp3song = 0; 
+static uint16_t mp3vol, mp3state, mp3eq, mp3fileCounts, mp3currentTrack, mp3onplay = 0, mp3random = 0, mp3song = 0; 
 static String consolestrings[12];
 static uint16_t consolestringscolor[12];
 static unsigned long counttime;
@@ -105,7 +105,7 @@ void readMP3state(){
   mp3vol = mp3.getVolume(); //read current volume
   mp3eq = mp3.getEq(); //read EQ setting
   mp3fileCounts = mp3.getTotalTrackCount(); //read all file counts in SD card
-  mp3currentFileNumber = mp3.getCurrentTrack(); //read current play file number
+  mp3currentTrack = mp3.getCurrentTrack(); //read current play file number
 }
 
 
@@ -154,13 +154,15 @@ void runButtonsCommand(){
     mp3onplay = 2; 
     mp3random = 0; 
     mp3song--; 
-    drawConsole(F("play previous"),TFT_YELLOW);}
+    readMP3state();
+    drawConsole("play prev " + (String)mp3currentTrack, TFT_YELLOW);}
   if (RIGHT_BUTTON && mp3song < mp3fileCounts) { 
     mp3.nextTrack(); 
     mp3onplay = 2; 
     mp3random = 0; 
     mp3song++; 
-    drawConsole(F("play next"),TFT_YELLOW);}
+    readMP3state();
+    drawConsole("play next " + (String)mp3currentTrack,TFT_YELLOW);}
   if (UP_BUTTON) { 
     mp3.increaseVolume(); 
     readMP3state();
@@ -184,7 +186,7 @@ void runButtonsCommand(){
       drawConsole("volume: " + (String)mp3vol, TFT_WHITE);
       drawConsole("EQ: " + (String)mp3eq, TFT_WHITE);
       drawConsole("file counts: " + (String)mp3fileCounts, TFT_WHITE);
-      drawConsole("current file: " + (String)mp3currentFileNumber, TFT_WHITE);
+      drawConsole("current file: " + (String)mp3currentTrack, TFT_WHITE);
     }
   }
   if (ACT_BUTTON) {
@@ -207,7 +209,7 @@ void runButtonsCommand(){
       drawConsole(F("stop play"),TFT_YELLOW);}
   }
   waitkeyunpressed();
-  delay(200);
+  delay(50);
   
   if (mp3onplay == 2) 
     if (!mp3random) pixels.setPixelColor(0, pixels.Color(0,20,0));
@@ -350,7 +352,7 @@ void loop(){
       lcdbrightnes -= 100;
       if (lcdbrightnes < 0) {
        screenoff();
-       lcdbrightnes = 0
+       lcdbrightnes = 0;
        counttime = millis();
       }
       dac.setVoltage(lcdbrightnes, false);
