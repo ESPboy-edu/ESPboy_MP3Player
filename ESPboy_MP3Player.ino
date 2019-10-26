@@ -60,7 +60,7 @@ void readMP3state();
 class Mp3Notify{
 public:
   static void OnError(uint16_t errorCode){
-    drawConsole(F("Com Error"), TFT_MAGENTA);
+    drawConsole(F("Com Error"), TFT_RED);
     drawConsole(F("Check SD card"), TFT_MAGENTA);
   }
   static void OnPlayFinished(uint16_t track){
@@ -190,7 +190,7 @@ void runButtonsCommand(){
       drawConsole((String)F("volume: ") + (String)mp3vol, TFT_WHITE);
       drawConsole((String)F("EQ: ") + (String)mp3eq, TFT_WHITE);
       drawConsole((String)F("file counts: ") + (String)mp3fileCounts, TFT_WHITE);
-      drawConsole((String)F("current file: ") + (String)mp3currentTrack, TFT_WHITE);
+      drawConsole((String)F("current track: ") + (String)mp3currentTrack, TFT_WHITE);
     }
   }
   if (ACT_BUTTON) {
