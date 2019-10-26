@@ -30,7 +30,6 @@ https://hackaday.io/project/164830-espboy-beyond-the-games-platform-with-wifi
 #define MP3OUTPUT             DfMp3_PlaySource_Sd
 
 
-
 //buttons
 #define LEFT_BUTTON   (buttonspressed & 1)
 #define UP_BUTTON     (buttonspressed & 2)
@@ -45,12 +44,14 @@ https://hackaday.io/project/164830-espboy-beyond-the-games-platform-with-wifi
 //diff vars button
 static uint_fast16_t  buttonspressed;
 static uint_fast16_t count;
-static uint16_t mp3vol, mp3state, mp3eq, mp3fileCounts, mp3currentTrack, mp3onplay = 0, mp3random = 0, mp3song = 0; 
+static uint16_t mp3vol, mp3state, mp3eq, mp3fileCounts, mp3currentTrack, mp3song = 0; 
 static String consolestrings[12];
 static uint16_t consolestringscolor[12];
 static unsigned long counttime;
 static int16_t lcdbrightnes = 4095;
 
+enum mp3status {STOP = 0, PAUSE = 1, PLAY = 2} mp3onplay = STOP;
+enum mp3randstat {OFF = 0, ON = 1} mp3random = OFF;
 
 void drawConsole(String strbfr, uint16_t color);
 void screenon();
@@ -65,7 +66,7 @@ public:
   }
   static void OnPlayFinished(uint16_t track){
     drawConsole(F("Play finished"), TFT_MAGENTA);
-    mp3onplay = 0;
+    mp3onplay = STOP;
     screenon();
     readMP3state(); 
   }
@@ -77,7 +78,7 @@ public:
   }
   static void OnCardInserted(uint16_t code){
     drawConsole(F("Card inserted"), TFT_MAGENTA);
-    mp3onplay = 0;
+    mp3onplay = STOP;
     screenon();
     readMP3state(); 
   }
@@ -86,7 +87,7 @@ public:
   }
   static void OnCardRemoved(uint16_t code){
     drawConsole(F("Card removed"), TFT_MAGENTA);
-    mp3onplay = 0;
+    mp3onplay = STOP;
     screenon();
   }
   static void OnUsbRemoved(uint16_t code){
@@ -156,15 +157,15 @@ void runButtonsCommand(){
   pixels.show();  
   if (LEFT_BUTTON && mp3song) {
     mp3.prevTrack(); 
-    mp3onplay = 2; 
-    mp3random = 0; 
+    mp3onplay = PLAY; 
+    mp3random = OFF; 
     mp3song--; 
     readMP3state();
     drawConsole((String)F("play prev ") + (String)mp3currentTrack, TFT_YELLOW);}
   if (RIGHT_BUTTON && mp3song < mp3fileCounts) { 
     mp3.nextTrack(); 
-    mp3onplay = 2; 
-    mp3random = 0; 
+    mp3onplay = PLAY; 
+    mp3random = OFF; 
     mp3song++; 
     readMP3state();
     drawConsole((String)F("play next ") + (String)mp3currentTrack,TFT_YELLOW);}
@@ -180,8 +181,8 @@ void runButtonsCommand(){
     keypressedtime = waitkeyunpressed();
     if (keypressedtime < 1000){
       mp3.playRandomTrackFromAll();
-      mp3random = 1; 
-      mp3onplay = 2; 
+      mp3random = ON; 
+      mp3onplay = PLAY; 
       drawConsole(F("random play"),TFT_YELLOW); 
     }
     else {
@@ -196,29 +197,29 @@ void runButtonsCommand(){
   if (ACT_BUTTON) {
     keypressedtime = waitkeyunpressed();
     if (keypressedtime < 1000){
-       if (mp3onplay == 2){ 
+       if (mp3onplay == PLAY){ 
         mp3.pause(); 
-        mp3onplay = 1; 
+        mp3onplay = PAUSE; 
         drawConsole(F("pause"),TFT_YELLOW);}
        else { 
         mp3.start(); 
-        mp3onplay = 2; 
+        mp3onplay = PLAY; 
         drawConsole(F("continue play"),TFT_YELLOW); }
     }
     else { 
       mp3.stop(); 
-      mp3onplay = 0; 
+      mp3onplay = STOP; 
       tone (SOUNDpin, 200, 100);
       drawConsole(F("stop play"),TFT_YELLOW);}
   }
   waitkeyunpressed();
   delay(150);
   
-  if (mp3onplay == 2) 
+  if (mp3onplay == PLAY) 
     if (!mp3random) pixels.setPixelColor(0, pixels.Color(0,20,0));
     else pixels.setPixelColor(0, pixels.Color(10,10,0));
-  if (mp3onplay == 1) pixels.setPixelColor(0, pixels.Color(3,0,0));
-  if (mp3onplay == 0) pixels.setPixelColor(0, pixels.Color(0,0,0));
+  if (mp3onplay == PAUSE) pixels.setPixelColor(0, pixels.Color(3,0,0));
+  if (mp3onplay == STOP) pixels.setPixelColor(0, pixels.Color(0,0,0));
 
   pixels.show();  
 }
@@ -357,7 +358,7 @@ void setup(){
 
 
 void loop(){
-  if ((millis()-counttime > 7000) && mp3onplay) 
+  if ((millis()-counttime > 7000) && mp3onplay == PLAY) 
     if (lcdbrightnes > 1){
       lcdbrightnes -= 100;
       if (lcdbrightnes < 0) {
