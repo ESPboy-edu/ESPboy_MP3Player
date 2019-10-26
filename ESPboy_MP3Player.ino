@@ -89,6 +89,7 @@ public:
     drawConsole(F("Card removed"), TFT_MAGENTA);
     mp3onplay = STOP;
     screenon();
+    readMP3state(); 
   }
   static void OnUsbRemoved(uint16_t code){
     drawConsole(F("USB Disk removed"), TFT_MAGENTA);   
@@ -268,7 +269,7 @@ void setup(){
   
   WiFi.mode(WIFI_OFF); // to safe some battery power
 //serial init
-  Serial.begin(9600);
+  Serial.begin(9600, SERIAL_8N1, SERIAL_RX_ONLY);
   secondarySerial.begin(9600);
 
 //buttons on mcp23017 init
