@@ -1,5 +1,10 @@
+/*
+ESPboy MP3 Player by RomanS
 
-#include <Wire.h>
+ESPboy project page:
+https://hackaday.io/project/164830-espboy-beyond-the-games-platform-with-wifi
+*/
+
 #include <TFT_eSPI.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_MCP23017.h>
@@ -20,7 +25,7 @@
 #define LEDquantity           1
 #define MCP4725address        0   
 
-#define MP3VOLUME             30
+#define MP3VOLUME             20
 #define MP3EQ                 DfMp3_Eq_Normal
 #define MP3OUTPUT             DfMp3_PlaySource_Sd
 
@@ -51,10 +56,12 @@ void drawConsole(String strbfr, uint16_t color);
 void screenon();
 void readMP3state();
 
+
 class Mp3Notify{
 public:
   static void OnError(uint16_t errorCode){
     drawConsole(F("Com Error"), TFT_MAGENTA);
+    drawConsole(F("Check SD card"), TFT_MAGENTA);
   }
   static void OnPlayFinished(uint16_t track){
     drawConsole(F("Play finished"), TFT_MAGENTA);
@@ -124,13 +131,11 @@ uint_fast16_t waitkeyunpressed(){
 
 
 void drawConsole(String bfrstr, uint16_t color){
-  String stringline = bfrstr;
-  for (int i=0; i<11; i++) 
-  {
+  for (int i=0; i<11; i++) {
     consolestrings[i] = consolestrings[i+1];
     consolestringscolor[i] = consolestringscolor[i+1];
   }
-  consolestrings[11] = stringline;
+  consolestrings[11] = bfrstr;
   consolestringscolor[11] = color;
   tft.fillRect(0,24,128,104,TFT_BLACK);
   for (int i=0; i<12; i++){
@@ -149,50 +154,48 @@ void runButtonsCommand(){
   tone (SOUNDpin, 800, 20);
   pixels.setPixelColor(0, pixels.Color(0,0,20));
   pixels.show();  
-  if (LEFT_BUTTON && mp3song > 0) {
+  if (LEFT_BUTTON && mp3song) {
     mp3.prevTrack(); 
     mp3onplay = 2; 
     mp3random = 0; 
     mp3song--; 
     readMP3state();
-    drawConsole("play prev " + (String)mp3currentTrack, TFT_YELLOW);}
+    drawConsole((String)F("play prev ") + (String)mp3currentTrack, TFT_YELLOW);}
   if (RIGHT_BUTTON && mp3song < mp3fileCounts) { 
     mp3.nextTrack(); 
     mp3onplay = 2; 
     mp3random = 0; 
     mp3song++; 
     readMP3state();
-    drawConsole("play next " + (String)mp3currentTrack,TFT_YELLOW);}
+    drawConsole((String)F("play next ") + (String)mp3currentTrack,TFT_YELLOW);}
   if (UP_BUTTON) { 
     mp3.increaseVolume(); 
     readMP3state();
-    drawConsole("volume up " + (String)mp3vol, TFT_YELLOW);}
+    drawConsole((String)F("volume up ") + (String)mp3vol, TFT_YELLOW);}
   if (DOWN_BUTTON) { 
     mp3.decreaseVolume();
     readMP3state(); 
-    drawConsole("volume down " + (String)mp3vol, TFT_YELLOW);}
+    drawConsole((String)F("volume down ") + (String)mp3vol, TFT_YELLOW);}
   if (ESC_BUTTON){ 
     keypressedtime = waitkeyunpressed();
     if (keypressedtime < 1000){
+      mp3.playRandomTrackFromAll();
       mp3random = 1; 
       mp3onplay = 2; 
       drawConsole(F("random play"),TFT_YELLOW); 
-      mp3.playRandomTrackFromAll();
     }
     else {
-      drawConsole(F("recieving data..."), TFT_WHITE);
       readMP3state();
-      drawConsole("state: " + (String)mp3state, TFT_WHITE);
-      drawConsole("volume: " + (String)mp3vol, TFT_WHITE);
-      drawConsole("EQ: " + (String)mp3eq, TFT_WHITE);
-      drawConsole("file counts: " + (String)mp3fileCounts, TFT_WHITE);
-      drawConsole("current file: " + (String)mp3currentTrack, TFT_WHITE);
+      drawConsole((String)F("state: ") + (String)mp3state, TFT_WHITE);
+      drawConsole((String)F("volume: ") + (String)mp3vol, TFT_WHITE);
+      drawConsole((String)F("EQ: ") + (String)mp3eq, TFT_WHITE);
+      drawConsole((String)F("file counts: ") + (String)mp3fileCounts, TFT_WHITE);
+      drawConsole((String)F("current file: ") + (String)mp3currentTrack, TFT_WHITE);
     }
   }
   if (ACT_BUTTON) {
     keypressedtime = waitkeyunpressed();
-    if (keypressedtime < 1000)
-    {
+    if (keypressedtime < 1000){
        if (mp3onplay == 2){ 
         mp3.pause(); 
         mp3onplay = 1; 
@@ -209,7 +212,7 @@ void runButtonsCommand(){
       drawConsole(F("stop play"),TFT_YELLOW);}
   }
   waitkeyunpressed();
-  delay(50);
+  delay(150);
   
   if (mp3onplay == 2) 
     if (!mp3random) pixels.setPixelColor(0, pixels.Color(0,20,0));
@@ -223,12 +226,17 @@ void runButtonsCommand(){
 
 
 void batshow(){
- int btt;
+ int btt[10], sum;
   tft.setTextColor(TFT_MAGENTA);
   tft.setCursor(108, 118);
-  btt = map (ESP.getVcc(), 2600, 3000, 0, 99);
-  if (btt > 99) btt = 99;
-  tft.print(btt);
+  for (int i=0; i<10; i++)
+     btt[i] = map (ESP.getVcc(), 2600, 3000, 0, 99);
+  sum = 0;
+  for (int i=0; i<10; i++)
+     sum += btt[i];
+  sum /= 10;
+  if (sum > 99) sum = 99;
+  tft.print(sum);
   tft.print("%");
 }
 
@@ -244,7 +252,6 @@ void screenoff(){
    lcdbrightnes = 0;
    pixels.setPixelColor(0, pixels.Color(0,0,0));
    pixels.show();  
-   delay(100);
    digitalWrite(D4, HIGH);
 }
 
@@ -255,6 +262,7 @@ void setup(){
   WiFi.mode(WIFI_OFF); // to safe some battery power
 //serial init
   Serial.begin(9600);
+  secondarySerial.begin(9600);
 
 //buttons on mcp23017 init
   mcp.begin(MCP23017address);
@@ -314,6 +322,7 @@ void setup(){
   mp3.decreaseVolume();
   if (MP3VOLUME != (mp3.getVolume()+1))
   {
+    tft.fillRect(0, 0, 128, 24, TFT_BLACK);
     tft.setTextSize(1);
     tft.setTextColor(TFT_RED);
     tft.setCursor(2*8, 60);
@@ -321,6 +330,7 @@ void setup(){
     while(true) delay(10);
   }
   mp3.reset(); 
+  mp3.setVolume(MP3VOLUME);  
   mp3.setEq(MP3EQ);
   mp3.setPlaybackSource(MP3OUTPUT);
   mp3.stop();
